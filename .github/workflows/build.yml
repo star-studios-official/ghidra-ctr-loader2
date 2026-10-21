@@ -9,7 +9,7 @@ on:
     inputs:
       ghidra_version:
         description: 'Ghidra release to build against'
-        required: false
+        required: true
         default: '12.1.4'
 
 permissions:
@@ -32,33 +32,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Resolve Ghidra release URL
-        id: resolve
-        run: |
-          set -euo pipefail
-          release_json="$(curl -fsSL https://api.github.com/repos/NationalSecurityAgency/ghidra/releases)"
-          url="$(printf '%s' "$release_json" \
-            | jq -r --arg v "$GHIDRA_VERSION" \
-                '[.[] | .assets[] | select(.name | test("ghidra_" + $v + "_PUBLIC_[0-9]+\\.zip$"))][0].browser_download_url')"
-          if [ -z "$url" ] || [ "$url" = "null" ]; then
-            echo "Could not resolve Ghidra release ${GHIDRA_VERSION}" >&2
-            exit 1
-          fi
-          echo "ghidra_url=${url}" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Ghidra distribution
-        id: cache-ghidra
-        uses: actions/cache@v4
-        with:
-          path: ghidra
-          key: ghidra-${{ env.GHIDRA_VERSION }}
-
       - name: Download and unpack Ghidra
-        if: steps.cache-ghidra.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           mkdir -p ghidra
-          curl -fL --retry 3 -o ghidra.zip "${{ steps.resolve.outputs.ghidra_url }}"
+          curl -fL --retry 3 -o ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip
           unzip -q ghidra.zip -d ghidra
           rm ghidra.zip
           inner="$(find ghidra -maxdepth 1 -mindepth 1 -type d -name 'ghidra_*' | head -n1)"
